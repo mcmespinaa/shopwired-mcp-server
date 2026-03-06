@@ -31,11 +31,18 @@ class Settings(BaseSettings):
     rate_limit_rate: float = 2.0  # requests per second
 
     # HTTP client settings
-    # `request_timeout` is the read timeout in seconds; connect timeout is fixed below
     request_timeout: float = 30.0
     max_retries: int = 3
-    # Limit the size of responses (bytes) to prevent memory exhaustion
-    max_response_size: int = 10_000_000
+    max_response_size: int = 10_000_000  # bytes
+    max_connections: int = 20
+    max_keepalive_connections: int = 10
+
+    # Circuit breaker
+    circuit_breaker_threshold: int = 5   # consecutive failures to open circuit
+    circuit_breaker_timeout: float = 30.0  # seconds before half-open probe
+
+    # Response cache
+    cache_ttl: float = 120.0  # seconds
 
     def validate_credentials(self) -> bool:
         """Check that API credentials are configured."""

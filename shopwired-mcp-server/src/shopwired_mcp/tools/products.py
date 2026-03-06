@@ -10,17 +10,18 @@ import logging
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from ..client import api_client
+from ..utils.formatting import format_generic_list, format_product, format_product_list
 
 logger = logging.getLogger(__name__)
-from ..utils.formatting import format_product, format_product_list, format_generic_list
 
 
 def register_product_tools(mcp: FastMCP) -> None:
     """Register all product-related tools with the MCP server."""
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def search_products(
         query: str,
         count: int = 20,
@@ -48,7 +49,7 @@ def register_product_tools(mcp: FastMCP) -> None:
             return format_product_list([data] if data.get("id") else [])
         return "No products found."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_product(product_id: int) -> str:
         """Get full details for a specific product by its ID.
 
@@ -65,7 +66,7 @@ def register_product_tools(mcp: FastMCP) -> None:
         product = data.get("data", data) if isinstance(data, dict) else data
         return format_product(product)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_products(
         count: int = 50,
         offset: int = 0,
@@ -104,7 +105,7 @@ def register_product_tools(mcp: FastMCP) -> None:
             return format_product_list(data["products"], total=data.get("total"))
         return "No products found."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=False))
     async def create_product(
         title: str,
         price: float = 0,
@@ -145,7 +146,7 @@ def register_product_tools(mcp: FastMCP) -> None:
         product = data.get("data", data) if isinstance(data, dict) else data
         return f"Product created successfully!\n\n{format_product(product)}"
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=True))
     async def update_product(
         product_id: int,
         title: str | None = None,
@@ -191,7 +192,7 @@ def register_product_tools(mcp: FastMCP) -> None:
         product = data.get("data", data) if isinstance(data, dict) else data
         return f"Product updated successfully!\n\n{format_product(product)}"
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
     async def delete_product(product_id: int, confirm: bool = False) -> str:
         """Delete a product from the store. This action cannot be undone.
 
@@ -207,7 +208,7 @@ def register_product_tools(mcp: FastMCP) -> None:
         await api_client.delete(f"/products/{product_id}")
         return f"Product {product_id} deleted successfully."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=True))
     async def update_stock(
         product_id: int,
         stock: int,
@@ -228,7 +229,7 @@ def register_product_tools(mcp: FastMCP) -> None:
             data = await api_client.put(f"/products/{product_id}", {"stock": stock})
             return f"Stock updated for product {product_id}: {stock} units"
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_product_variations(product_id: int) -> str:
         """List all variations (size, color, etc.) for a product.
 
@@ -255,7 +256,7 @@ def register_product_tools(mcp: FastMCP) -> None:
             lines.append(f"  - ID {vid}: {opts} | Price: {price} | SKU: {sku} | Stock: {stock}")
         return "\n".join(lines)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_product_images(product_id: int) -> str:
         """List all images for a product.
 
@@ -276,7 +277,7 @@ def register_product_tools(mcp: FastMCP) -> None:
             lines.append(f"  - ID {img_id}: {url}" + (f" (position: {position})" if position else ""))
         return "\n".join(lines)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_product_count(active: bool | None = None) -> str:
         """Get the total number of products in the store.
 

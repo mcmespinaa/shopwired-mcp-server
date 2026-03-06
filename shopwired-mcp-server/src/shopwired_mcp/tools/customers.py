@@ -3,20 +3,24 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from ..client import api_client
+from ..utils.formatting import format_customer, format_customer_list
 
 logger = logging.getLogger(__name__)
-from ..utils.formatting import format_customer, format_customer_list
 
 
 def register_customer_tools(mcp: FastMCP) -> None:
     """Register all customer-related tools with the MCP server."""
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_customers(
         count: int = 50,
         offset: int = 0,
@@ -43,7 +47,7 @@ def register_customer_tools(mcp: FastMCP) -> None:
             return format_customer_list(data["customers"], total=data.get("total"))
         return "No customers found."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_customer(customer_id: int) -> str:
         """Get full details for a specific customer.
 
@@ -56,7 +60,7 @@ def register_customer_tools(mcp: FastMCP) -> None:
         customer = data.get("data", data) if isinstance(data, dict) else data
         return format_customer(customer)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_customer_count() -> str:
         """Get the total number of customers in the store."""
         data = await api_client.get("/customers/count")
@@ -66,7 +70,7 @@ def register_customer_tools(mcp: FastMCP) -> None:
             return f"Total customers: {count}"
         return f"Total customers: {data}"
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=False))
     async def create_customer(
         first_name: str,
         last_name: str,
@@ -89,6 +93,8 @@ def register_customer_tools(mcp: FastMCP) -> None:
             return "Last name cannot be empty."
         if not email.strip():
             return "Email cannot be empty."
+        if not _EMAIL_RE.match(email):
+            return "Invalid email address format."
         body: dict[str, Any] = {
             "firstName": first_name,
             "lastName": last_name,

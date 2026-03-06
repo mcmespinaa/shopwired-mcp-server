@@ -10,17 +10,18 @@ import logging
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from ..client import api_client
+from ..utils.formatting import format_order, format_order_list
 
 logger = logging.getLogger(__name__)
-from ..utils.formatting import format_order, format_order_list
 
 
 def register_order_tools(mcp: FastMCP) -> None:
     """Register all order-related tools with the MCP server."""
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_orders(
         count: int = 50,
         offset: int = 0,
@@ -51,7 +52,7 @@ def register_order_tools(mcp: FastMCP) -> None:
             return format_order_list(data["orders"], total=data.get("total"))
         return "No orders found."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_order(order_id: int) -> str:
         """Get full details for a specific order.
 
@@ -64,7 +65,7 @@ def register_order_tools(mcp: FastMCP) -> None:
         order = data.get("data", data) if isinstance(data, dict) else data
         return format_order(order)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def search_orders(
         query: str,
         count: int = 20,
@@ -90,7 +91,7 @@ def register_order_tools(mcp: FastMCP) -> None:
             return format_order_list(data["orders"], total=data.get("total"))
         return "No orders found."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_order_count(status: str | None = None) -> str:
         """Get the total number of orders, optionally filtered.
 
@@ -108,7 +109,7 @@ def register_order_tools(mcp: FastMCP) -> None:
             return f"Total orders: {count}"
         return f"Total orders: {data}"
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=True))
     async def update_order_status(
         order_id: int,
         status: str,
@@ -134,7 +135,7 @@ def register_order_tools(mcp: FastMCP) -> None:
         await api_client.post(f"/orders/{order_id}/status", body)
         return f"Order {order_id} status updated to '{status}'."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=False))
     async def add_order_comment(
         order_id: int,
         comment: str,
@@ -153,7 +154,7 @@ def register_order_tools(mcp: FastMCP) -> None:
         await api_client.post(f"/orders/{order_id}/comments", {"comment": comment})
         return f"Comment added to order {order_id}."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
     async def delete_order(order_id: int, confirm: bool = False) -> str:
         """Delete an order. This action cannot be undone.
 

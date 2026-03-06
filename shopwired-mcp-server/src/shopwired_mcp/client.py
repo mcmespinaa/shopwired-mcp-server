@@ -8,13 +8,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
 from .config import settings
+from .utils.cache import TTLCache
 from .utils.rate_limiter import LeakyBucketLimiter
 
 
@@ -42,6 +45,10 @@ class ShopWiredClient:
             rate=settings.rate_limit_rate,
         )
         self._client: httpx.AsyncClient | None = None
+        self._cache = TTLCache(default_ttl=settings.cache_ttl)
+        # Circuit breaker state
+        self._consecutive_failures: int = 0
+        self._circuit_open_until: float = 0.0
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Lazy-initialize the HTTP client."""
@@ -58,6 +65,10 @@ class ShopWiredClient:
                     "User-Agent": "shopwired-mcp-server/0.1.0",
                 },
                 timeout=httpx.Timeout(settings.request_timeout, connect=10.0),
+                limits=httpx.Limits(
+                    max_connections=settings.max_connections,
+                    max_keepalive_connections=settings.max_keepalive_connections,
+                ),
             )
         return self._client
 
@@ -78,6 +89,15 @@ class ShopWiredClient:
 
         Implements retry with exponential backoff for transient errors.
         """
+        # Circuit breaker check
+        if self._consecutive_failures >= settings.circuit_breaker_threshold:
+            if time.monotonic() < self._circuit_open_until:
+                raise ShopWiredAPIError(
+                    503,
+                    f"Circuit breaker open. Retry after {self._circuit_open_until - time.monotonic():.0f}s.",
+                )
+            logger.info("Circuit breaker half-open, allowing probe request")
+
         client = await self._get_client()
         last_error: Exception | None = None
 
@@ -103,10 +123,12 @@ class ShopWiredClient:
 
                 # Success
                 if response.status_code in (200, 201):
+                    self._consecutive_failures = 0
                     return response.json()
 
                 # No content (e.g., successful DELETE)
                 if response.status_code == 204:
+                    self._consecutive_failures = 0
                     return {"success": True}
 
                 # Rate limited — wait and retry
@@ -124,6 +146,10 @@ class ShopWiredClient:
                         response.status_code, method, path, attempt + 1, settings.max_retries, wait,
                     )
                     await asyncio.sleep(wait)
+                    self._consecutive_failures += 1
+                    if self._consecutive_failures >= settings.circuit_breaker_threshold:
+                        self._circuit_open_until = time.monotonic() + settings.circuit_breaker_timeout
+                        logger.error("Circuit breaker opened after %d consecutive failures", self._consecutive_failures)
                     last_error = ShopWiredAPIError(
                         response.status_code,
                         _safe_error_message(response),
@@ -147,10 +173,15 @@ class ShopWiredClient:
                     method, path, attempt + 1, settings.max_retries, wait,
                 )
                 await asyncio.sleep(wait)
+                self._consecutive_failures += 1
+                if self._consecutive_failures >= settings.circuit_breaker_threshold:
+                    self._circuit_open_until = time.monotonic() + settings.circuit_breaker_timeout
+                    logger.error("Circuit breaker opened after %d consecutive failures", self._consecutive_failures)
                 last_error = httpx.TimeoutException(f"Timeout on {method} {path}")
 
             except httpx.HTTPError as exc:
                 logger.error("HTTP error on %s %s: %s", method, path, exc)
+                self._consecutive_failures += 1
                 last_error = exc
                 break  # Network errors are not retried
 
@@ -162,21 +193,37 @@ class ShopWiredClient:
     # ── Convenience methods ──────────────────────────────────────────────
 
     async def get(self, path: str, *, params: dict[str, Any] | None = None, **extra_params: Any) -> Any:
-        """GET request. Accepts params as a dict and/or keyword arguments."""
+        """GET request with response caching."""
         merged = {**(params or {}), **extra_params}
-        return await self.request("GET", path, params=merged or None)
+        cache_key = _cache_key(path, merged)
+        cached = self._cache.get(cache_key)
+        if cached is not None:
+            return cached
+        result = await self.request("GET", path, params=merged or None)
+        self._cache.set(cache_key, result)
+        return result
 
     async def post(self, path: str, data: dict[str, Any] | None = None, *, json_data: dict[str, Any] | None = None) -> Any:
-        """POST request. Accepts body as positional 'data' or keyword 'json_data'."""
+        """POST request. Invalidates cache for the resource."""
+        self._cache.invalidate_prefix(path.split("/")[1] if "/" in path else path)
         return await self.request("POST", path, json_body=json_data or data)
 
     async def put(self, path: str, data: dict[str, Any] | None = None, *, json_data: dict[str, Any] | None = None) -> Any:
-        """PUT request. Accepts body as positional 'data' or keyword 'json_data'."""
+        """PUT request. Invalidates cache for the resource."""
+        self._cache.invalidate_prefix(path.split("/")[1] if "/" in path else path)
         return await self.request("PUT", path, json_body=json_data or data)
 
     async def delete(self, path: str) -> Any:
-        """DELETE request."""
+        """DELETE request. Invalidates cache for the resource."""
+        self._cache.invalidate_prefix(path.split("/")[1] if "/" in path else path)
         return await self.request("DELETE", path)
+
+
+def _cache_key(path: str, params: dict[str, Any] | None) -> str:
+    """Build a deterministic cache key from path and query params."""
+    if not params:
+        return path
+    return f"{path}?{urlencode(sorted(params.items()))}"
 
 
 def _clean_params(params: dict[str, Any] | None) -> dict[str, Any] | None:

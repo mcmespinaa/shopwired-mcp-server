@@ -7,14 +7,17 @@ webhooks, and business details.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any
+from urllib.parse import urlparse
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from ..client import api_client
+from ..utils.formatting import format_category, format_generic_list, format_voucher
 
 logger = logging.getLogger(__name__)
-from ..utils.formatting import format_category, format_generic_list, format_voucher
 
 
 def register_store_tools(mcp: FastMCP) -> None:
@@ -22,7 +25,7 @@ def register_store_tools(mcp: FastMCP) -> None:
 
     # ── Categories ────────────────────────────────────────────────────
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_categories(count: int = 100, offset: int = 0) -> str:
         """List all product categories.
 
@@ -40,7 +43,7 @@ def register_store_tools(mcp: FastMCP) -> None:
             return "No categories found."
         return "\n\n".join(format_category(c) for c in categories)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=False))
     async def create_category(
         name: str,
         description: str = "",
@@ -66,7 +69,7 @@ def register_store_tools(mcp: FastMCP) -> None:
         cat = data.get("data", data) if isinstance(data, dict) else data
         return f"Category created!\n{format_category(cat)}"
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=True))
     async def update_category(
         category_id: int,
         name: str | None = None,
@@ -94,7 +97,7 @@ def register_store_tools(mcp: FastMCP) -> None:
         cat = data.get("data", data) if isinstance(data, dict) else data
         return f"Category updated!\n{format_category(cat)}"
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
     async def delete_category(category_id: int, confirm: bool = False) -> str:
         """Delete a category. Products in this category will become uncategorized. This action cannot be undone.
 
@@ -112,7 +115,7 @@ def register_store_tools(mcp: FastMCP) -> None:
 
     # ── Brands ────────────────────────────────────────────────────────
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_brands(count: int = 100, offset: int = 0) -> str:
         """List all product brands.
 
@@ -128,7 +131,7 @@ def register_store_tools(mcp: FastMCP) -> None:
         items = data if isinstance(data, list) else data.get("brands", data.get("data", []))
         return format_generic_list(items, "brand")
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=False))
     async def create_brand(name: str, description: str = "") -> str:
         """Create a new brand.
 
@@ -147,7 +150,7 @@ def register_store_tools(mcp: FastMCP) -> None:
 
     # ── Vouchers ──────────────────────────────────────────────────────
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_vouchers(count: int = 50, offset: int = 0) -> str:
         """List all voucher/discount codes.
 
@@ -165,7 +168,7 @@ def register_store_tools(mcp: FastMCP) -> None:
             return "No vouchers found."
         return "\n\n".join(format_voucher(v) for v in items)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=False))
     async def create_voucher(
         code: str,
         voucher_type: str,
@@ -203,13 +206,17 @@ def register_store_tools(mcp: FastMCP) -> None:
         if usage_limit is not None:
             body["usageLimit"] = usage_limit
         if expiry_date:
+            try:
+                datetime.strptime(expiry_date, "%Y-%m-%d")
+            except ValueError:
+                return "Expiry date must be in YYYY-MM-DD format."
             body["expiryDate"] = expiry_date
 
         data = await api_client.post("/vouchers", body)
         voucher = data.get("data", data) if isinstance(data, dict) else data
         return f"Voucher created!\n{format_voucher(voucher)}"
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(destructiveHint=True))
     async def delete_voucher(voucher_id: int, confirm: bool = False) -> str:
         """Delete a voucher. This action cannot be undone.
 
@@ -227,7 +234,7 @@ def register_store_tools(mcp: FastMCP) -> None:
 
     # ── Gift Cards ────────────────────────────────────────────────────
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_gift_cards(count: int = 50, offset: int = 0) -> str:
         """List all gift cards.
 
@@ -245,14 +252,14 @@ def register_store_tools(mcp: FastMCP) -> None:
 
     # ── Shipping ──────────────────────────────────────────────────────
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_shipping_zones() -> str:
         """List all shipping zones configured in the store."""
         data = await api_client.get("/shipping-zones")
         items = data if isinstance(data, list) else data.get("shippingZones", data.get("data", []))
         return format_generic_list(items, "shipping zone")
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_shipping_rates(zone_id: int) -> str:
         """List shipping rates for a specific zone.
 
@@ -273,7 +280,7 @@ def register_store_tools(mcp: FastMCP) -> None:
 
     # ── Webhooks ──────────────────────────────────────────────────────
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_webhooks() -> str:
         """List all configured webhooks."""
         data = await api_client.get("/webhooks")
@@ -288,7 +295,7 @@ def register_store_tools(mcp: FastMCP) -> None:
             lines.append(f"  - ID {wh_id}: {event} → {url}")
         return "\n".join(lines)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(idempotentHint=False, openWorldHint=True))
     async def create_webhook(event: str, url: str) -> str:
         """Create a new webhook subscription.
 
@@ -296,13 +303,20 @@ def register_store_tools(mcp: FastMCP) -> None:
             event: The event to subscribe to (e.g., 'order.created', 'product.updated')
             url: The URL to receive webhook POST requests
         """
+        if not event.strip():
+            return "Webhook event cannot be empty."
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            return "Webhook URL must use HTTPS."
+        if not parsed.netloc:
+            return "Invalid webhook URL."
         data = await api_client.post("/webhooks", {"event": event, "url": url})
         hook = data.get("data", data) if isinstance(data, dict) else data
         return f"Webhook created: {hook.get('event', event)} → {hook.get('url', url)} (ID: {hook.get('id', 'N/A')})"
 
     # ── Business Details ──────────────────────────────────────────────
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_business_details() -> str:
         """Get the store's business details (name, address, contact info)."""
         data = await api_client.get("/business-details")
@@ -319,7 +333,7 @@ def register_store_tools(mcp: FastMCP) -> None:
 
     # ── Countries ─────────────────────────────────────────────────────
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_countries() -> str:
         """List all available countries (for shipping configuration)."""
         data = await api_client.get("/countries")
@@ -328,7 +342,7 @@ def register_store_tools(mcp: FastMCP) -> None:
 
     # ── Payment Methods ───────────────────────────────────────────────
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def list_payment_methods() -> str:
         """List all payment methods configured in the store."""
         data = await api_client.get("/payment-methods")

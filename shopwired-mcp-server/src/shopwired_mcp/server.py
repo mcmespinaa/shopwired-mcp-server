@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import logging
 import sys
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 from mcp.server.fastmcp import FastMCP
 
@@ -23,11 +25,25 @@ logging.basicConfig(
     stream=sys.stderr,
 )
 
+from .client import api_client
 from .config import settings
 from .tools.customers import register_customer_tools
 from .tools.orders import register_order_tools
 from .tools.products import register_product_tools
 from .tools.store import register_store_tools
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def server_lifespan(app: FastMCP) -> AsyncIterator[dict]:
+    """Manage resources across the server lifecycle."""
+    logger.info("ShopWired MCP server starting up")
+    try:
+        yield {}
+    finally:
+        logger.info("ShopWired MCP server shutting down")
+        await api_client.close()
 
 
 def create_server() -> FastMCP:
@@ -39,6 +55,7 @@ def create_server() -> FastMCP:
             "store configuration for a ShopWired e-commerce store. "
             "Use these tools to query and modify store data through the ShopWired API."
         ),
+        lifespan=server_lifespan,
     )
 
     # Register all tool modules
