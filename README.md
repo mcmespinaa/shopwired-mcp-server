@@ -94,8 +94,8 @@ This server lets AI tools like **Claude Desktop**, **Claude Code**, **Cursor**, 
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/mcmespinaa/shopwired-mcp-server.git
-cd shopwired-mcp-server/shopwired-mcp-server
+git clone https://github.com/mcmespinaa/shopwired.git
+cd shopwired/shopwired-mcp-server
 uv sync --dev
 ```
 
@@ -125,7 +125,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
       "command": "uv",
       "args": [
         "--directory",
-        "/ABSOLUTE/PATH/TO/shopwired-mcp-server/shopwired-mcp-server",
+        "/ABSOLUTE/PATH/TO/shopwired/shopwired-mcp-server",
         "run",
         "shopwired-mcp"
       ],
@@ -143,7 +143,7 @@ Restart Claude Desktop. You should see **shopwired** in the tools menu.
 #### Claude Code
 
 ```bash
-claude mcp add shopwired -- uv --directory /ABSOLUTE/PATH/TO/shopwired-mcp-server/shopwired-mcp-server run shopwired-mcp
+claude mcp add shopwired -- uv --directory /ABSOLUTE/PATH/TO/shopwired/shopwired-mcp-server run shopwired-mcp
 ```
 
 #### Cursor / Windsurf
@@ -157,7 +157,7 @@ Add to your MCP configuration file (`.cursor/mcp.json` or equivalent):
       "command": "uv",
       "args": [
         "--directory",
-        "/ABSOLUTE/PATH/TO/shopwired-mcp-server/shopwired-mcp-server",
+        "/ABSOLUTE/PATH/TO/shopwired/shopwired-mcp-server",
         "run",
         "shopwired-mcp"
       ],
