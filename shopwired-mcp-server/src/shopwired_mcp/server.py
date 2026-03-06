@@ -12,9 +12,16 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import sys
 
 from mcp.server.fastmcp import FastMCP
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stderr,
+)
 
 from .config import settings
 from .tools.customers import register_customer_tools

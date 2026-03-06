@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import SecretStr
 
 
 class Settings(BaseSettings):
@@ -19,9 +20,9 @@ class Settings(BaseSettings):
     )
 
     # Required — ShopWired API credentials
-    api_key: str = ""
-    api_secret: str = ""
-
+    # Use SecretStr for safer handling and make fields required
+    api_key: SecretStr
+    api_secret: SecretStr
     # API base URL
     api_base_url: str = "https://api.ecommerceapi.uk/v1"
 
@@ -30,12 +31,19 @@ class Settings(BaseSettings):
     rate_limit_rate: float = 2.0  # requests per second
 
     # HTTP client settings
+    # `request_timeout` is the read timeout in seconds; connect timeout is fixed below
     request_timeout: float = 30.0
     max_retries: int = 3
+    # Limit the size of responses (bytes) to prevent memory exhaustion
+    max_response_size: int = 10_000_000
 
     def validate_credentials(self) -> bool:
         """Check that API credentials are configured."""
-        if not self.api_key or not self.api_secret:
+        # SecretStr fields will raise if they are missing, but we still
+        # provide a human-friendly check and message before the server starts.
+        key = self.api_key.get_secret_value() if self.api_key else ""
+        secret = self.api_secret.get_secret_value() if self.api_secret else ""
+        if not key or not secret:
             print(
                 "ERROR: SHOPWIRED_API_KEY and SHOPWIRED_API_SECRET must be set.\n"
                 "Copy .env.example to .env and fill in your credentials.",

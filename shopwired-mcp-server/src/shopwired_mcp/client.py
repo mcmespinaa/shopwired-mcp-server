@@ -7,10 +7,12 @@ ShopWired REST API at https://api.ecommerceapi.uk/v1.
 from __future__ import annotations
 
 import asyncio
-import sys
+import logging
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 from .config import settings
 from .utils.rate_limiter import LeakyBucketLimiter
@@ -19,9 +21,8 @@ from .utils.rate_limiter import LeakyBucketLimiter
 class ShopWiredAPIError(Exception):
     """Raised when the ShopWired API returns an error."""
 
-    def __init__(self, status_code: int, message: str, response_body: Any = None) -> None:
+    def __init__(self, status_code: int, message: str) -> None:
         self.status_code = status_code
-        self.response_body = response_body
         super().__init__(f"ShopWired API error {status_code}: {message}")
 
 
@@ -47,13 +48,16 @@ class ShopWiredClient:
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
                 base_url=settings.api_base_url,
-                auth=(settings.api_key, settings.api_secret),
+                auth=(
+                    settings.api_key.get_secret_value(),
+                    settings.api_secret.get_secret_value(),
+                ),
                 headers={
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                     "User-Agent": "shopwired-mcp-server/0.1.0",
                 },
-                timeout=settings.request_timeout,
+                timeout=httpx.Timeout(settings.request_timeout, connect=10.0),
             )
         return self._client
 
@@ -89,6 +93,14 @@ class ShopWiredClient:
                     json=json_body,
                 )
 
+                # Guard against oversized responses
+                content_length = response.headers.get("content-length")
+                if content_length and int(content_length) > settings.max_response_size:
+                    raise ShopWiredAPIError(
+                        response.status_code,
+                        f"Response too large ({content_length} bytes, limit {settings.max_response_size})",
+                    )
+
                 # Success
                 if response.status_code in (200, 201):
                     return response.json()
@@ -100,46 +112,45 @@ class ShopWiredClient:
                 # Rate limited — wait and retry
                 if response.status_code == 429:
                     retry_after = float(response.headers.get("Retry-After", 2))
-                    print(
-                        f"Rate limited (429). Retrying after {retry_after}s...",
-                        file=sys.stderr,
-                    )
+                    logger.warning("Rate limited (429). Retrying after %ss", retry_after)
                     await asyncio.sleep(retry_after)
                     continue
 
                 # Server error — retry with backoff
                 if response.status_code >= 500:
                     wait = 2**attempt
-                    print(
-                        f"Server error ({response.status_code}). "
-                        f"Retry {attempt + 1}/{settings.max_retries} in {wait}s...",
-                        file=sys.stderr,
+                    logger.warning(
+                        "Server error (%d) on %s %s. Retry %d/%d in %ds",
+                        response.status_code, method, path, attempt + 1, settings.max_retries, wait,
                     )
                     await asyncio.sleep(wait)
                     last_error = ShopWiredAPIError(
                         response.status_code,
-                        response.text,
-                        _safe_json(response),
+                        _safe_error_message(response),
                     )
                     continue
 
                 # Client error — don't retry
+                logger.error(
+                    "Client error (%d) on %s %s: %s",
+                    response.status_code, method, path, response.text,
+                )
                 raise ShopWiredAPIError(
                     response.status_code,
-                    response.text,
-                    _safe_json(response),
+                    _safe_error_message(response),
                 )
 
             except httpx.TimeoutException:
                 wait = 2**attempt
-                print(
-                    f"Request timeout. Retry {attempt + 1}/{settings.max_retries} in {wait}s...",
-                    file=sys.stderr,
+                logger.warning(
+                    "Request timeout on %s %s. Retry %d/%d in %ds",
+                    method, path, attempt + 1, settings.max_retries, wait,
                 )
                 await asyncio.sleep(wait)
                 last_error = httpx.TimeoutException(f"Timeout on {method} {path}")
 
             except httpx.HTTPError as exc:
+                logger.error("HTTP error on %s %s: %s", method, path, exc)
                 last_error = exc
                 break  # Network errors are not retried
 
@@ -175,12 +186,22 @@ def _clean_params(params: dict[str, Any] | None) -> dict[str, Any] | None:
     return {k: v for k, v in params.items() if v is not None}
 
 
-def _safe_json(response: httpx.Response) -> Any:
-    """Try to parse response as JSON, return None on failure."""
+def _safe_error_message(response: httpx.Response) -> str:
+    """Extract a user-safe error message from the API response.
+
+    Logs the full response body internally and returns only the
+    message field (or a generic summary) to avoid leaking internal details.
+    """
     try:
-        return response.json()
+        body = response.json()
+        if isinstance(body, dict):
+            # Common API error shapes: {"message": "..."} or {"error": "..."}
+            msg = body.get("message") or body.get("error") or body.get("detail")
+            if msg:
+                return str(msg)
+        return f"HTTP {response.status_code} error"
     except Exception:
-        return None
+        return f"HTTP {response.status_code} error"
 
 
 # Singleton client instance — import from other modules

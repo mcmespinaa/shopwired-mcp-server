@@ -6,11 +6,14 @@ products in a ShopWired store, plus stock and image management.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from ..client import api_client
+
+logger = logging.getLogger(__name__)
 from ..utils.formatting import format_product, format_product_list, format_generic_list
 
 
@@ -28,10 +31,12 @@ def register_product_tools(mcp: FastMCP) -> None:
             query: Search term to match against product names and descriptions
             count: Maximum number of results to return (default: 20, max: 250)
         """
-        # ShopWired search endpoint: GET /products/search?query=...
+        if not query.strip():
+            return "Search query cannot be empty."
+        if count < 1:
+            return "Count must be at least 1."
         params: dict[str, Any] = {"query": query}
-        if count:
-            params["count"] = min(count, 250)
+        params["count"] = min(count, 250)
 
         data = await api_client.get("/products/search", params=params)
 
@@ -51,6 +56,8 @@ def register_product_tools(mcp: FastMCP) -> None:
             product_id: The numeric ID of the product
         """
         # Request embedded data for full details
+        if product_id < 1:
+            return "Invalid product ID."
         data = await api_client.get(
             f"/products/{product_id}",
             params={"embed": "images,brand,categories,variations,extras,options"},
@@ -75,6 +82,10 @@ def register_product_tools(mcp: FastMCP) -> None:
             sort: Sort order - 'title', 'title_desc', or leave empty for creation date
             embed: Comma-separated related data to include (e.g. 'images,brand,categories')
         """
+        if count < 1:
+            return "Count must be at least 1."
+        if offset < 0:
+            return "Offset cannot be negative."
         params: dict[str, Any] = {"count": min(count, 250)}
         if offset:
             params["offset"] = offset
@@ -114,6 +125,9 @@ def register_product_tools(mcp: FastMCP) -> None:
             active: Whether the product is active (default: True)
             weight: Product weight
         """
+        if not title.strip():
+            return "Product title cannot be empty."
+        logger.info("create_product called: title=%r", title)
         body: dict[str, Any] = {"title": title}
         if price:
             body["price"] = price
@@ -152,6 +166,10 @@ def register_product_tools(mcp: FastMCP) -> None:
             active: Set active (True) or hidden (False)
             weight: New weight
         """
+        if product_id < 1:
+            return "Invalid product ID."
+        if title is not None and not title.strip():
+            return "Product title cannot be empty."
         body: dict[str, Any] = {}
         if title is not None:
             body["title"] = title
@@ -174,12 +192,18 @@ def register_product_tools(mcp: FastMCP) -> None:
         return f"Product updated successfully!\n\n{format_product(product)}"
 
     @mcp.tool()
-    async def delete_product(product_id: int) -> str:
+    async def delete_product(product_id: int, confirm: bool = False) -> str:
         """Delete a product from the store. This action cannot be undone.
 
         Args:
             product_id: The numeric ID of the product to delete
+            confirm: Must be True to execute the deletion. Defaults to False as a safety measure.
         """
+        if product_id < 1:
+            return "Invalid product ID."
+        if not confirm:
+            return f"This will permanently delete product {product_id}. Call again with confirm=True to proceed."
+        logger.info("delete_product confirmed: product_id=%d", product_id)
         await api_client.delete(f"/products/{product_id}")
         return f"Product {product_id} deleted successfully."
 

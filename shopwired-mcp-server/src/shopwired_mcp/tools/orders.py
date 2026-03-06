@@ -6,11 +6,14 @@ orders in a ShopWired store.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from ..client import api_client
+
+logger = logging.getLogger(__name__)
 from ..utils.formatting import format_order, format_order_list
 
 
@@ -30,6 +33,10 @@ def register_order_tools(mcp: FastMCP) -> None:
             offset: Number of orders to skip for pagination (default: 0)
             status: Filter by order status (e.g., 'pending', 'processing', 'shipped', 'completed')
         """
+        if count < 1:
+            return "Count must be at least 1."
+        if offset < 0:
+            return "Offset cannot be negative."
         params: dict[str, Any] = {"count": min(count, 250)}
         if offset:
             params["offset"] = offset
@@ -51,6 +58,8 @@ def register_order_tools(mcp: FastMCP) -> None:
         Args:
             order_id: The numeric order ID
         """
+        if order_id < 1:
+            return "Invalid order ID."
         data = await api_client.get(f"/orders/{order_id}")
         order = data.get("data", data) if isinstance(data, dict) else data
         return format_order(order)
@@ -66,9 +75,12 @@ def register_order_tools(mcp: FastMCP) -> None:
             query: Search term
             count: Maximum results (default: 20)
         """
+        if not query.strip():
+            return "Search query cannot be empty."
+        if count < 1:
+            return "Count must be at least 1."
         params: dict[str, Any] = {"query": query}
-        if count:
-            params["count"] = min(count, 250)
+        params["count"] = min(count, 250)
 
         data = await api_client.get("/orders/search", params=params)
 
@@ -109,10 +121,15 @@ def register_order_tools(mcp: FastMCP) -> None:
             status: New status (e.g., 'processing', 'shipped', 'completed', 'cancelled')
             notify_customer: Whether to send a notification email to the customer (default: False)
         """
+        if order_id < 1:
+            return "Invalid order ID."
+        if not status.strip():
+            return "Status cannot be empty."
         body: dict[str, Any] = {"status": status}
         if notify_customer:
             body["notifyCustomer"] = True
 
+        logger.info("update_order_status: order_id=%d, status=%r", order_id, status)
         # ShopWired uses POST /orders/{id}/status
         await api_client.post(f"/orders/{order_id}/status", body)
         return f"Order {order_id} status updated to '{status}'."
@@ -128,16 +145,26 @@ def register_order_tools(mcp: FastMCP) -> None:
             order_id: The order ID
             comment: The comment text to add
         """
+        if order_id < 1:
+            return "Invalid order ID."
+        if not comment.strip():
+            return "Comment cannot be empty."
         # ShopWired uses POST /orders/{id}/comments
         await api_client.post(f"/orders/{order_id}/comments", {"comment": comment})
         return f"Comment added to order {order_id}."
 
     @mcp.tool()
-    async def delete_order(order_id: int) -> str:
+    async def delete_order(order_id: int, confirm: bool = False) -> str:
         """Delete an order. This action cannot be undone.
 
         Args:
             order_id: The numeric order ID to delete
+            confirm: Must be True to execute the deletion. Defaults to False as a safety measure.
         """
+        if order_id < 1:
+            return "Invalid order ID."
+        if not confirm:
+            return f"This will permanently delete order #{order_id}. Call again with confirm=True to proceed."
+        logger.info("delete_order confirmed: order_id=%d", order_id)
         await api_client.delete(f"/orders/{order_id}")
         return f"Order #{order_id} deleted successfully."

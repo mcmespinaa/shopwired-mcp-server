@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from ..client import api_client
+
+logger = logging.getLogger(__name__)
 from ..utils.formatting import format_customer, format_customer_list
 
 
@@ -24,6 +27,10 @@ def register_customer_tools(mcp: FastMCP) -> None:
             count: Number of customers per page (default: 50, max: 250)
             offset: Number of customers to skip for pagination (default: 0)
         """
+        if count < 1:
+            return "Count must be at least 1."
+        if offset < 0:
+            return "Offset cannot be negative."
         params: dict[str, Any] = {"count": min(count, 250)}
         if offset:
             params["offset"] = offset
@@ -43,6 +50,8 @@ def register_customer_tools(mcp: FastMCP) -> None:
         Args:
             customer_id: The numeric customer ID
         """
+        if customer_id < 1:
+            return "Invalid customer ID."
         data = await api_client.get(f"/customers/{customer_id}")
         customer = data.get("data", data) if isinstance(data, dict) else data
         return format_customer(customer)
@@ -74,6 +83,12 @@ def register_customer_tools(mcp: FastMCP) -> None:
             phone: Phone number
             company: Company name
         """
+        if not first_name.strip():
+            return "First name cannot be empty."
+        if not last_name.strip():
+            return "Last name cannot be empty."
+        if not email.strip():
+            return "Email cannot be empty."
         body: dict[str, Any] = {
             "firstName": first_name,
             "lastName": last_name,

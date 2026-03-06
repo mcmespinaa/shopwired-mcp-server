@@ -6,11 +6,14 @@ webhooks, and business details.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from ..client import api_client
+
+logger = logging.getLogger(__name__)
 from ..utils.formatting import format_category, format_generic_list, format_voucher
 
 
@@ -50,10 +53,14 @@ def register_store_tools(mcp: FastMCP) -> None:
             description: Category description
             parent_id: Parent category ID for nested categories
         """
+        if not name.strip():
+            return "Category name cannot be empty."
         body: dict[str, Any] = {"name": name}
         if description:
             body["description"] = description
         if parent_id is not None:
+            if parent_id < 1:
+                return "Invalid parent category ID."
             body["parentId"] = parent_id
         data = await api_client.post("/categories", body)
         cat = data.get("data", data) if isinstance(data, dict) else data
@@ -72,6 +79,10 @@ def register_store_tools(mcp: FastMCP) -> None:
             name: New name
             description: New description
         """
+        if category_id < 1:
+            return "Invalid category ID."
+        if name is not None and not name.strip():
+            return "Category name cannot be empty."
         body: dict[str, Any] = {}
         if name is not None:
             body["name"] = name
@@ -84,12 +95,18 @@ def register_store_tools(mcp: FastMCP) -> None:
         return f"Category updated!\n{format_category(cat)}"
 
     @mcp.tool()
-    async def delete_category(category_id: int) -> str:
-        """Delete a category. Products in this category will become uncategorized.
+    async def delete_category(category_id: int, confirm: bool = False) -> str:
+        """Delete a category. Products in this category will become uncategorized. This action cannot be undone.
 
         Args:
             category_id: The category ID to delete
+            confirm: Must be True to execute the deletion. Defaults to False as a safety measure.
         """
+        if category_id < 1:
+            return "Invalid category ID."
+        if not confirm:
+            return f"This will permanently delete category {category_id}. Call again with confirm=True to proceed."
+        logger.info("delete_category confirmed: category_id=%d", category_id)
         await api_client.delete(f"/categories/{category_id}")
         return f"Category {category_id} deleted."
 
@@ -119,6 +136,8 @@ def register_store_tools(mcp: FastMCP) -> None:
             name: Brand name (required)
             description: Brand description
         """
+        if not name.strip():
+            return "Brand name cannot be empty."
         body: dict[str, Any] = {"name": name}
         if description:
             body["description"] = description
@@ -167,6 +186,12 @@ def register_store_tools(mcp: FastMCP) -> None:
             usage_limit: Maximum number of times this voucher can be used
             expiry_date: Expiry date in YYYY-MM-DD format
         """
+        if not code.strip():
+            return "Voucher code cannot be empty."
+        if voucher_type not in ("percentage", "fixed", "free_shipping"):
+            return "Voucher type must be 'percentage', 'fixed', or 'free_shipping'."
+        if value < 0:
+            return "Voucher value cannot be negative."
         body: dict[str, Any] = {
             "code": code,
             "type": voucher_type,
@@ -185,12 +210,18 @@ def register_store_tools(mcp: FastMCP) -> None:
         return f"Voucher created!\n{format_voucher(voucher)}"
 
     @mcp.tool()
-    async def delete_voucher(voucher_id: int) -> str:
-        """Delete a voucher.
+    async def delete_voucher(voucher_id: int, confirm: bool = False) -> str:
+        """Delete a voucher. This action cannot be undone.
 
         Args:
             voucher_id: The voucher ID to delete
+            confirm: Must be True to execute the deletion. Defaults to False as a safety measure.
         """
+        if voucher_id < 1:
+            return "Invalid voucher ID."
+        if not confirm:
+            return f"This will permanently delete voucher {voucher_id}. Call again with confirm=True to proceed."
+        logger.info("delete_voucher confirmed: voucher_id=%d", voucher_id)
         await api_client.delete(f"/vouchers/{voucher_id}")
         return f"Voucher {voucher_id} deleted."
 
