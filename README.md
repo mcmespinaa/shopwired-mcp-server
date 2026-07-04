@@ -8,7 +8,7 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 
 ## What It Does
 
-This server lets AI tools like **Claude Desktop**, **Claude Code**, **Cursor**, **Windsurf**, and any MCP-compatible client interact with a ShopWired store. It wraps the ShopWired REST API into **38 standardized MCP tools** that any AI client can discover and call.
+This server lets AI tools like **Claude Desktop**, **Claude Cowork**, **Claude Code**, **Cursor**, **Windsurf**, and any MCP-compatible client interact with a ShopWired store. It wraps the ShopWired REST API into **38 standardized MCP tools** that any AI client can discover and call.
 
 **Example prompts you can use:**
 
@@ -114,7 +114,7 @@ cd shopwired-mcp-server/shopwired-mcp-server
 uv sync --dev
 ```
 
-### 2. Configure credentials
+#### 2. Configure credentials
 
 ```bash
 cp .env.example .env
@@ -127,7 +127,7 @@ SHOPWIRED_API_KEY=your_api_key_here
 SHOPWIRED_API_SECRET=your_api_secret_here
 ```
 
-### 3. Connect to an AI client
+### Connect to an AI client
 
 #### Claude Desktop
 
@@ -140,7 +140,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
       "command": "uv",
       "args": [
         "--directory",
-        "/ABSOLUTE/PATH/TO/shopwired/shopwired-mcp-server",
+        "/ABSOLUTE/PATH/TO/shopwired-mcp-server/shopwired-mcp-server",
         "run",
         "shopwired-mcp"
       ],
@@ -155,10 +155,25 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 Restart Claude Desktop. You should see **shopwired** in the tools menu.
 
+#### Claude Cowork
+
+Cowork (the agentic workspace in the Claude desktop app) reads the **same
+config file as Claude Desktop** — no separate setup:
+
+1. Open the Claude desktop app → **Settings → Developer → Edit Config**
+2. Add the `shopwired` block exactly as shown in the Claude Desktop section above
+3. Restart the Claude app — the ShopWired tools are available in Cowork sessions
+
+> **Note on remote use:** Cowork's custom connectors (Customize → Connectors)
+> run from Anthropic's cloud and authenticate via OAuth. This server's remote
+> transport uses a static bearer token instead, so for Cowork use the local
+> config above; the remote deployment works with Claude Code and other
+> header-capable HTTP clients.
+
 #### Claude Code
 
 ```bash
-claude mcp add shopwired -- uv --directory /ABSOLUTE/PATH/TO/shopwired/shopwired-mcp-server run shopwired-mcp
+claude mcp add shopwired -- uv --directory /ABSOLUTE/PATH/TO/shopwired-mcp-server/shopwired-mcp-server run shopwired-mcp
 ```
 
 #### Cursor / Windsurf
@@ -172,7 +187,7 @@ Add to your MCP configuration file (`.cursor/mcp.json` or equivalent):
       "command": "uv",
       "args": [
         "--directory",
-        "/ABSOLUTE/PATH/TO/shopwired/shopwired-mcp-server",
+        "/ABSOLUTE/PATH/TO/shopwired-mcp-server/shopwired-mcp-server",
         "run",
         "shopwired-mcp"
       ],
@@ -190,7 +205,7 @@ Add to your MCP configuration file (`.cursor/mcp.json` or equivalent):
 ## Architecture
 
 ```
-AI Client (Claude Desktop / Claude Code / Cursor)
+AI Client (Claude Desktop / Cowork / Claude Code / Cursor)
     |
     [JSON-RPC 2.0 / stdio]           -- local (default)
     [streamable-http + bearer token] -- remote (see DEPLOY.md)
@@ -354,8 +369,10 @@ The server uses a FastMCP lifespan context manager to ensure the HTTP connection
 
 The server can also run as a **remote MCP server** over streamable-http, so
 clients connect to a URL instead of spawning a local process — one container
-serving your store to Claude Code, Claude Desktop, or any HTTP-capable MCP
-client.
+serving your store to Claude Code or any MCP client that can send an
+`Authorization` header. (Claude Cowork and claude.ai custom connectors
+authenticate via OAuth, not static bearer tokens — use the local setup for
+those.)
 
 - **Auth:** every request must present `Authorization: Bearer <token>`
   (`SHOPWIRED_AUTH_TOKEN`). Constant-time comparison, fail-closed — the
@@ -392,6 +409,8 @@ tools, the skills provide the judgment.
 ---
 
 ## Development
+
+All commands run from the `shopwired-mcp-server/` subfolder:
 
 ```bash
 # Run tests
