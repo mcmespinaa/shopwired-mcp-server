@@ -91,11 +91,26 @@ This server lets AI tools like **Claude Desktop**, **Claude Code**, **Cursor**, 
 - **[uv](https://docs.astral.sh/uv/)** (recommended) or pip
 - **ShopWired API Key and Secret** — get these from your ShopWired admin panel under *Your Account → API & Webhooks*
 
-### 1. Clone and install
+### Option A — One-click installer (recommended)
 
 ```bash
-git clone https://github.com/mcmespinaa/shopwired.git
-cd shopwired/shopwired-mcp-server
+git clone https://github.com/mcmespinaa/shopwired-mcp-server.git
+cd shopwired-mcp-server/shopwired-mcp-server
+./install.sh        # macOS / Linux — Windows: install.bat
+```
+
+The installer sets up `uv`, installs locked dependencies, prompts for your
+API credentials (never written to disk), and registers the server with
+Claude Code automatically. If Claude Code isn't installed it prints the
+Claude Desktop config to paste instead. That's it — try a prompt.
+
+### Option B — Manual setup
+
+#### 1. Clone and install
+
+```bash
+git clone https://github.com/mcmespinaa/shopwired-mcp-server.git
+cd shopwired-mcp-server/shopwired-mcp-server
 uv sync --dev
 ```
 
@@ -177,9 +192,12 @@ Add to your MCP configuration file (`.cursor/mcp.json` or equivalent):
 ```
 AI Client (Claude Desktop / Claude Code / Cursor)
     |
-    [JSON-RPC 2.0 / stdio]
+    [JSON-RPC 2.0 / stdio]           -- local (default)
+    [streamable-http + bearer token] -- remote (see DEPLOY.md)
     v
 ShopWired MCP Server (FastMCP)
+    +-- Bearer Auth Middleware (HTTP only; constant-time, fail-closed)
+    +-- /health endpoint (liveness + ?deep=true readiness)
     +-- Tool Registry (38 tools with MCP annotations)
     +-- Rate Limiter (leaky bucket: 40 burst, 2/sec)
     +-- Circuit Breaker (opens after 5 failures, 30s recovery)
@@ -200,7 +218,8 @@ shopwired-mcp-server/
 ├── src/shopwired_mcp/
 │   ├── __init__.py
 │   ├── __main__.py          # python -m entry point
-│   ├── server.py            # MCP server setup, lifespan, main()
+│   ├── server.py            # MCP server setup, health endpoint, main()
+│   ├── auth.py              # Bearer-token middleware (HTTP transport)
 │   ├── client.py            # HTTP client (auth, retry, cache, circuit breaker)
 │   ├── config.py            # Settings via pydantic-settings
 │   ├── tools/
@@ -213,15 +232,22 @@ shopwired-mcp-server/
 │       ├── cache.py         # TTL cache for GET responses
 │       └── formatting.py    # API response → readable text
 ├── tests/
+│   ├── test_auth.py         # Bearer auth middleware + health endpoint tests
+│   ├── test_client.py       # Retry-After parsing tests
 │   ├── test_formatting.py   # Response formatter tests
 │   ├── test_rate_limiter.py # Rate limiter tests
 │   └── test_cache.py        # TTL cache tests
+├── install.sh / install.bat  # One-click installers (macOS/Linux, Windows)
+├── Dockerfile                # Container image for remote deployment
+├── DEPLOY.md                 # Cloud Run / Render / VPS guide + health checks
 ├── pyproject.toml
 ├── .env.example
 ├── PERMISSIONS.md            # API endpoint reference per tool
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
 └── README.md
+
+../shopwired-skills/          # Companion agent skills (sibling folder, see below)
 ```
 
 ---
@@ -235,6 +261,10 @@ All settings are loaded from environment variables (prefixed with `SHOPWIRED_`) 
 | `SHOPWIRED_API_KEY` | *required* | ShopWired API key |
 | `SHOPWIRED_API_SECRET` | *required* | ShopWired API secret |
 | `SHOPWIRED_API_BASE_URL` | `https://api.ecommerceapi.uk/v1` | API base URL |
+| `SHOPWIRED_TRANSPORT` | `stdio` | `stdio` (local) or `streamable-http` (remote) |
+| `SHOPWIRED_AUTH_TOKEN` | *(empty)* | **Required for HTTP transport** — bearer token remote clients must present; the server refuses to start over HTTP without it |
+| `SHOPWIRED_HOST` | `0.0.0.0` | Bind address (HTTP transport only) |
+| `SHOPWIRED_PORT` | `8080` | Bind port (HTTP transport only) |
 | `SHOPWIRED_RATE_LIMIT_BURST` | `40` | Leaky bucket burst capacity |
 | `SHOPWIRED_RATE_LIMIT_RATE` | `2.0` | Sustained requests per second |
 | `SHOPWIRED_REQUEST_TIMEOUT` | `30.0` | HTTP request timeout (seconds) |
@@ -299,7 +329,7 @@ GET responses are cached in-memory with a 2-minute TTL:
 
 ### Retry with Backoff
 
-- **429 (Rate Limited):** Retries after `Retry-After` header value
+- **429 (Rate Limited):** Retries after the `Retry-After` header value (clamped to 60s; malformed/NaN values fall back to 2s)
 - **5xx (Server Error):** Retries with exponential backoff (1s, 2s, 4s)
 - **4xx (Client Error):** Not retried (fails immediately)
 - **Timeouts:** Retried with exponential backoff
@@ -317,6 +347,47 @@ API error responses are sanitized before being returned to the AI client. Only t
 ### Graceful Shutdown
 
 The server uses a FastMCP lifespan context manager to ensure the HTTP connection pool is properly closed on shutdown, preventing resource leaks.
+
+---
+
+## Remote Deployment (HTTP)
+
+The server can also run as a **remote MCP server** over streamable-http, so
+clients connect to a URL instead of spawning a local process — one container
+serving your store to Claude Code, Claude Desktop, or any HTTP-capable MCP
+client.
+
+- **Auth:** every request must present `Authorization: Bearer <token>`
+  (`SHOPWIRED_AUTH_TOKEN`). Constant-time comparison, fail-closed — the
+  server refuses to start over HTTP without a token.
+- **Health checks:** `GET /health` (liveness, no auth) and
+  `GET /health?deep=true` (readiness — single-attempt 5s probe of the
+  ShopWired API, memoized 10s, returns 503 when unreachable).
+- **Container-ready:** `Dockerfile` included; works on Cloud Run (free tier,
+  scale-to-zero), Render, or any VPS behind HTTPS.
+
+```bash
+claude mcp add --transport http shopwired https://YOUR-URL/mcp \
+  --header "Authorization: Bearer YOUR_TOKEN"
+```
+
+Full walkthrough: [DEPLOY.md](shopwired-mcp-server/DEPLOY.md).
+
+---
+
+## Agent Skills Library
+
+[`shopwired-skills/`](shopwired-skills/) ships 10 companion skills — Markdown
+knowledge bases that teach AI agents how to operate a ShopWired store *well*,
+not just which tools exist. Start with `store-intelligence-core` (how to read
+store state correctly — variation stock, active flags, category structure);
+the rest cover catalog quality, inventory decisions, pricing/promotions,
+order lifecycle, customer segments, B2B/wholesale routing, multi-channel
+sync, store onboarding, and reporting.
+
+Use them with any skills-capable client (e.g. copy into `~/.claude/skills/`
+for Claude Code). They pair with the MCP server: the server provides the
+tools, the skills provide the judgment.
 
 ---
 
