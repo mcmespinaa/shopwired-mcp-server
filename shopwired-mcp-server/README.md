@@ -177,7 +177,7 @@ Ask your AI assistant:
 ```
 AI Client (Claude Desktop / Claude Code / Cursor)
         |
-  [JSON-RPC 2.0 / stdio]
+  [JSON-RPC 2.0 / stdio  —or—  streamable-http + bearer token, see DEPLOY.md]
         v
   ShopWired MCP Server (FastMCP)
   +-- Tool Registry (38 tools with MCP annotations)
@@ -232,6 +232,10 @@ All settings are loaded from environment variables (prefixed with `SHOPWIRED_`) 
 | `SHOPWIRED_API_KEY` | *required* | ShopWired API key |
 | `SHOPWIRED_API_SECRET` | *required* | ShopWired API secret |
 | `SHOPWIRED_API_BASE_URL` | `https://api.ecommerceapi.uk/v1` | API base URL |
+| `SHOPWIRED_TRANSPORT` | `stdio` | `stdio` (local) or `streamable-http` (remote — see [DEPLOY.md](DEPLOY.md)) |
+| `SHOPWIRED_AUTH_TOKEN` | *(empty)* | **Required for HTTP transport.** Bearer token remote clients must present; the server refuses to start over HTTP without it |
+| `SHOPWIRED_HOST` | `0.0.0.0` | Bind address (HTTP transport only) |
+| `SHOPWIRED_PORT` | `8080` | Bind port (HTTP transport only) |
 | `SHOPWIRED_RATE_LIMIT_BURST` | `40` | Leaky bucket burst capacity |
 | `SHOPWIRED_RATE_LIMIT_RATE` | `2.0` | Sustained requests per second |
 | `SHOPWIRED_REQUEST_TIMEOUT` | `30.0` | HTTP request timeout (seconds) |

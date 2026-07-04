@@ -13,7 +13,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ..client import api_client
-from ..utils.formatting import format_generic_list, format_product, format_product_list
+from ..utils.formatting import format_product, format_product_list
 
 logger = logging.getLogger(__name__)
 

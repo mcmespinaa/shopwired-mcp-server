@@ -8,17 +8,25 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import time
 from typing import Any
 from urllib.parse import urlencode
 
 import httpx
 
-logger = logging.getLogger(__name__)
-
+from . import __version__
 from .config import settings
 from .utils.cache import TTLCache
 from .utils.rate_limiter import LeakyBucketLimiter
+
+logger = logging.getLogger(__name__)
+
+# Never let a Retry-After header stall a tool call longer than this. A broken
+# proxy sending "Retry-After: 86400" should not hang the agent for a day.
+MAX_RETRY_AFTER = 60.0
+# Wait when the header is absent or unusable (non-numeric, NaN, HTTP-date).
+DEFAULT_RETRY_AFTER = 2.0
 
 
 class ShopWiredAPIError(Exception):
@@ -62,7 +70,7 @@ class ShopWiredClient:
                 headers={
                     "Accept": "application/json",
                     "Content-Type": "application/json",
-                    "User-Agent": "shopwired-mcp-server/0.1.0",
+                    "User-Agent": f"shopwired-mcp-server/{__version__}",
                 },
                 timeout=httpx.Timeout(settings.request_timeout, connect=10.0),
                 limits=httpx.Limits(
@@ -133,8 +141,11 @@ class ShopWiredClient:
 
                 # Rate limited — wait and retry
                 if response.status_code == 429:
-                    retry_after = float(response.headers.get("Retry-After", 2))
+                    retry_after = _parse_retry_after(response.headers.get("Retry-After"))
                     logger.warning("Rate limited (429). Retrying after %ss", retry_after)
+                    # Record the 429 so exhausting retries surfaces the real
+                    # status instead of a generic error-code-0 failure.
+                    last_error = ShopWiredAPIError(429, "Rate limited by ShopWired API")
                     await asyncio.sleep(retry_after)
                     continue
 
@@ -218,12 +229,46 @@ class ShopWiredClient:
         self._cache.invalidate_prefix(path.split("/")[1] if "/" in path else path)
         return await self.request("DELETE", path)
 
+    async def ping(self, timeout: float = 5.0) -> bool:
+        """Single-attempt reachability probe for health checks.
+
+        Deliberately bypasses the rate limiter, retry loop, cache, and
+        circuit breaker: a readiness probe must answer within the platform's
+        probe deadline and must not consume the request budget shared with
+        real tool calls (the endpoint calling this is auth-exempt).
+        """
+        try:
+            client = await self._get_client()
+            response = await client.get("/customers/count", timeout=timeout)
+            return response.is_success
+        except httpx.HTTPError:
+            return False
+
 
 def _cache_key(path: str, params: dict[str, Any] | None) -> str:
     """Build a deterministic cache key from path and query params."""
     if not params:
         return path
     return f"{path}?{urlencode(sorted(params.items()))}"
+
+
+def _parse_retry_after(value: str | None) -> float:
+    """Parse a Retry-After header, clamped to a sane ceiling.
+
+    The header may also be an HTTP-date (RFC 9110); we fall back to the
+    default wait rather than parsing dates for a value this rare. NaN gets
+    the same treatment — it slips through min/max comparisons and would
+    otherwise produce zero-sleep hot retries.
+    """
+    if value is None:
+        return DEFAULT_RETRY_AFTER
+    try:
+        seconds = float(value)
+    except ValueError:
+        return DEFAULT_RETRY_AFTER
+    if not math.isfinite(seconds):
+        return DEFAULT_RETRY_AFTER
+    return max(0.0, min(seconds, MAX_RETRY_AFTER))
 
 
 def _clean_params(params: dict[str, Any] | None) -> dict[str, Any] | None:

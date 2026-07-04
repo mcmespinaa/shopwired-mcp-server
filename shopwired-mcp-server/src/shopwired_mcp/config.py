@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import sys
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from pydantic import SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -25,6 +26,17 @@ class Settings(BaseSettings):
     api_secret: SecretStr
     # API base URL
     api_base_url: str = "https://api.ecommerceapi.uk/v1"
+
+    # --- Remote / HTTP transport ---------------------------------------------
+    # Transport: "stdio" (local, default) or "streamable-http" (remote).
+    transport: str = "stdio"
+    # Network bind settings (used only for HTTP transport).
+    host: str = "0.0.0.0"  # noqa: S104 — container hosts require binding all interfaces
+    port: int = 8080
+    # Shared bearer token that remote clients must present. When the server runs
+    # over HTTP this MUST be set, or the store API is exposed to the open internet.
+    # Empty by default so local stdio is unaffected.
+    auth_token: SecretStr = SecretStr("")
 
     # Rate limiting (leaky bucket)
     rate_limit_burst: int = 40
@@ -60,5 +72,6 @@ class Settings(BaseSettings):
         return True
 
 
-# Singleton — import this from other modules
-settings = Settings()
+# Singleton — import this from other modules. The required fields are loaded
+# from env vars / .env at runtime, which strict mypy can't see.
+settings = Settings()  # type: ignore[call-arg]

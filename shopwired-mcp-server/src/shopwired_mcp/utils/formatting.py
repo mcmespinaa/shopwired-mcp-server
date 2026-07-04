@@ -179,7 +179,7 @@ def format_voucher(voucher: dict[str, Any]) -> str:
     """Format a voucher/discount code."""
     voucher_type = voucher.get("type", voucher.get("voucherType", "N/A"))
     value = voucher.get("value", voucher.get("amount", "N/A"))
-    active = voucher.get("active", None)
+    active = voucher.get("active")
     status = "Active" if active else "Inactive" if active is not None else "N/A"
     lines = [
         f"Voucher: {voucher.get('code', 'N/A')}",
