@@ -4,6 +4,8 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](shopwired-mcp-server/LICENSE) [![MCP](https://img.shields.io/badge/MCP-Compatible-purple)](https://modelcontextprotocol.io/)
 
+**🛍️ Website: [mcmespinaa.github.io/shopwired-mcp-server](https://mcmespinaa.github.io/shopwired-mcp-server/)**
+
 ---
 
 ## What It Does
