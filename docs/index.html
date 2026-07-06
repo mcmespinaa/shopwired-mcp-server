@@ -5,165 +5,206 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ShopWired MCP Server — connect your webshop to Claude</title>
 <meta name="description" content="Open-source MCP server connecting AI assistants to ShopWired e-commerce stores. 38 tools for products, orders, customers and store config. MIT licensed.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230a0a0a'/><text x='50' y='72' font-size='60' text-anchor='middle' fill='%232693ff' font-family='sans-serif' font-weight='bold'>W</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700;800&family=Outfit:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#fefefe;
-  --ink:#0a0a0a;
-  --ink-soft:#5c5c5c;
-  --blue:#2693ff;
-  --blue-deep:#0f7ae5;
-  --mint:#e9f6f2;
-  --line:#e7e7e7;
-  --dark-line:#2a2a2a;
-  --sans:'Avenir Next',Avenir,'Mulish',sans-serif;
+  --cream:#FBF6EA;
+  --paper:#F5EDDB;
+  --ink:#1A1D3A;
+  --ink-s:#3B3E5E;
+  --muted:#7B7E9A;
+  --pink:#FFB8D9;
+  --pink-hot:#FF8FB8;
+  --pink-soft:#FFDBE5;
+  --butter:#FFE9A8;
+  --lav:#E0C8FF;
+  --sky:#CDEBFF;
+  --mint:#B8F5D8;
+  --peach:#FFD4B8;
+  --display:'Unbounded',sans-serif;
+  --body:'Outfit',sans-serif;
+  --serif:'Instrument Serif',serif;
   --mono:'IBM Plex Mono',ui-monospace,monospace;
-  --radius:10px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
-::selection{background:var(--blue);color:#fff}
+body{background:var(--cream);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:var(--pink);color:var(--ink)}
 a{color:inherit}
 code,pre{font-family:var(--mono)}
 .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
 
 /* ─── header ─── */
-header{position:sticky;top:0;z-index:50;background:rgba(254,254,254,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.bar{display:flex;align-items:center;justify-content:space-between;height:64px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;letter-spacing:-.01em;text-decoration:none}
-.brand .mark{width:26px;height:26px;border-radius:7px;background:var(--ink);color:var(--blue);display:grid;place-items:center;font-size:15px;font-weight:800}
-.brand small{font-weight:500;color:var(--ink-soft);font-size:13px;margin-left:2px}
-nav{display:flex;align-items:center;gap:28px;font-size:14px;font-weight:600}
-nav a{text-decoration:none;color:var(--ink)}
-nav a:hover{color:var(--blue)}
-nav .pill{background:var(--blue);color:#fff;padding:9px 20px;border-radius:999px;transition:background .15s}
-nav .pill:hover{background:var(--blue-deep);color:#fff}
-@media(max-width:640px){nav a:not(.pill){display:none}}
+header{position:sticky;top:0;z-index:50;background:rgba(251,246,234,.9);backdrop-filter:blur(10px);border-bottom:1.5px solid var(--ink)}
+.bar{display:flex;align-items:center;justify-content:space-between;height:66px}
+.brand{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:-.01em;text-decoration:none}
+.brand small{font-family:var(--mono);font-weight:500;color:var(--muted);font-size:12px;margin-left:8px}
+nav{display:flex;align-items:center;gap:26px;font-size:15px;font-weight:600}
+nav a{text-decoration:none;color:var(--ink-s)}
+nav a:hover{color:var(--ink);text-decoration:underline;text-decoration-color:var(--pink-hot);text-decoration-thickness:3px;text-underline-offset:5px}
+nav .pill{background:var(--pink);color:var(--ink);padding:10px 22px;border-radius:999px;border:1.5px solid var(--ink);box-shadow:3px 3px 0 var(--ink);transition:transform .12s,box-shadow .12s,background .12s}
+nav .pill:hover{background:var(--pink-hot);transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink);text-decoration:none}
+@media(max-width:660px){nav a:not(.pill){display:none}}
 
-/* ─── buttons ─── */
-.btn{display:inline-flex;align-items:center;gap:9px;text-decoration:none;font-weight:700;font-size:15.5px;padding:15px 30px;border-radius:999px;transition:background .15s,color .15s,transform .12s;border:1.5px solid transparent}
-.btn:active{transform:scale(.98)}
-.btn-blue{background:var(--blue);color:#fff}
-.btn-blue:hover{background:var(--blue-deep)}
-.btn-white{background:#fff;color:var(--ink)}
-.btn-white:hover{background:var(--blue);color:#fff}
-.btn-outline{border-color:#fff;color:#fff}
-.btn-outline:hover{background:#fff;color:var(--ink)}
-.btn-outline-dark{border-color:var(--ink);color:var(--ink)}
-.btn-outline-dark:hover{background:var(--ink);color:#fff}
+/* ─── hero ─── */
+.hero{position:relative;padding:96px 0 110px;overflow:hidden}
+.blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.55;pointer-events:none;animation:drift 16s ease-in-out infinite alternate}
+.blob-pink{width:480px;height:480px;background:var(--pink);top:-140px;right:-100px}
+.blob-lav{width:360px;height:360px;background:var(--lav);bottom:-160px;left:-120px;animation-delay:-6s}
+.blob-butter{width:280px;height:280px;background:var(--butter);top:40%;left:38%;opacity:.4;animation-delay:-11s}
+@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(40px,26px) scale(1.08)}}
+.hero .wrap{display:grid;grid-template-columns:1.08fr .92fr;gap:60px;align-items:center;position:relative}
+@media(max-width:940px){.hero .wrap{grid-template-columns:1fr}}
+.kicker{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.06em;background:#fff;border:1.5px solid var(--ink);border-radius:999px;padding:8px 18px;box-shadow:3px 3px 0 var(--ink);margin-bottom:30px}
+.kicker .dot{width:8px;height:8px;border-radius:50%;background:var(--pink-hot);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.6}}
+h1{font-family:var(--display);font-size:clamp(32px,4.6vw,52px);font-weight:700;line-height:1.14;letter-spacing:-.02em}
+h1 .hl{position:relative;white-space:nowrap}
+h1 .hl::before{content:"";position:absolute;inset:.08em -.12em -.02em;background:var(--pink);z-index:-1;border-radius:10px;transform:rotate(-1.2deg)}
+h1 .serif{font-family:var(--serif);font-style:italic;font-weight:400;font-size:1.12em}
+.lede{color:var(--ink-s);font-size:18.5px;max-width:46ch;margin:26px 0 0}
+.lede strong{color:var(--ink)}
+.cta-row{display:flex;flex-wrap:wrap;gap:16px;margin-top:38px}
+.btn{display:inline-flex;align-items:center;gap:9px;text-decoration:none;font-family:var(--body);font-weight:700;font-size:16px;padding:16px 32px;border-radius:999px;border:1.5px solid var(--ink);transition:transform .13s,box-shadow .13s,background .13s;color:var(--ink)}
+.btn-pink{background:var(--pink);box-shadow:4px 4px 0 var(--ink)}
+.btn-pink:hover{background:var(--pink-hot);transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+.btn-pink:active{transform:translate(1px,1px);box-shadow:2px 2px 0 var(--ink)}
+.btn-plain{background:#fff;box-shadow:4px 4px 0 var(--ink)}
+.btn-plain:hover{background:var(--butter);transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+.cta-note{font-size:14px;color:var(--muted);margin-top:18px}
+.cta-note code{background:#fff;border:1px solid var(--paper);padding:2px 9px;border-radius:7px;font-size:12.5px;color:var(--ink-s)}
+.cta-note a{color:var(--ink);text-decoration-color:var(--pink-hot);text-decoration-thickness:2px}
+.trust{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:36px;font-size:14px;color:var(--ink-s);font-weight:500}
+.trust span::before{content:"✓ ";color:var(--pink-hot);font-weight:800}
 
-/* ─── hero (dark band, like shopwired.dk) ─── */
-.hero{background:var(--ink);color:#fff;padding:96px 0 100px;position:relative;overflow:hidden}
-.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:64px;align-items:center}
-@media(max-width:920px){.hero .wrap{grid-template-columns:1fr}}
-.kicker{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;letter-spacing:.02em;color:#cfcfcf;background:#1c1c1c;border:1px solid var(--dark-line);border-radius:999px;padding:7px 16px;margin-bottom:28px}
-.kicker .dot{width:7px;height:7px;border-radius:50%;background:var(--blue)}
-h1{font-size:clamp(38px,5.4vw,58px);font-weight:800;line-height:1.08;letter-spacing:-.02em}
-h1 span{color:var(--blue)}
-.hero .lede{color:#c9c9c9;font-size:18px;max-width:46ch;margin:24px 0 0}
-.hero .lede strong{color:#fff}
-.cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:36px}
-.cta-note{font-size:13px;color:#9a9a9a;margin-top:18px}
-.cta-note code{background:#1c1c1c;padding:2px 8px;border-radius:5px;font-size:12px;color:#cfcfcf}
-.cta-note a{color:var(--blue)}
-.trust{display:flex;flex-wrap:wrap;gap:8px 26px;margin-top:40px;font-size:13px;color:#9a9a9a;font-weight:500}
-.trust span{display:flex;align-items:center;gap:7px}
-.trust .ok{color:var(--blue);font-weight:700}
-
-/* receipt-as-product-card */
-.demo{background:#fff;color:var(--ink);border-radius:14px;box-shadow:0 30px 80px -20px rgba(0,0,0,.55);overflow:hidden}
-.demo-head{display:flex;align-items:center;gap:8px;padding:13px 18px;border-bottom:1px solid var(--line);background:#fafafa}
-.demo-head i{width:10px;height:10px;border-radius:50%;background:#e4e4e4;display:inline-block}
-.demo-head i:first-child{background:#f26d5f}
-.demo-head span{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-left:8px}
+/* demo card */
+.demo{background:#fff;border:1.5px solid var(--ink);border-radius:20px;box-shadow:8px 8px 0 var(--ink);overflow:hidden;transform:rotate(1.4deg);animation:bob 7s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:rotate(1.4deg) translateY(0)}50%{transform:rotate(1.1deg) translateY(-9px)}}
+.demo:hover{animation-play-state:paused}
+.demo-head{display:flex;align-items:center;gap:7px;padding:14px 18px;border-bottom:1.5px solid var(--ink);background:var(--pink-soft)}
+.demo-head i{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--ink);display:inline-block;background:#fff}
+.demo-head i:nth-child(1){background:var(--pink-hot)}
+.demo-head i:nth-child(2){background:var(--butter)}
+.demo-head i:nth-child(3){background:var(--mint)}
+.demo-head span{font-family:var(--mono);font-size:12px;color:var(--ink-s);margin-left:8px}
 .demo-body{padding:22px 26px;font-family:var(--mono);font-size:13.5px}
-.dline{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px dashed var(--line)}
-.dline .q::before{content:"you › ";color:var(--blue);font-weight:600}
+.dline{display:flex;justify-content:space-between;gap:14px;padding:9.5px 0;border-bottom:1.5px dashed var(--paper)}
+.dline .q::before{content:"you › ";color:var(--pink-hot);font-weight:600}
 .dline .a{color:#0b8a55;font-weight:500;white-space:nowrap}
 .dline .a.warn{color:#c8402a}
-.demo-total{display:flex;justify-content:space-between;font-weight:600;padding-top:14px;font-size:14px}
+.demo-total{display:flex;justify-content:space-between;font-weight:600;padding-top:15px;font-size:14px}
+
+/* ─── ticker ─── */
+.ticker{border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);background:var(--butter);overflow:hidden;padding:13px 0}
+.ticker-track{display:flex;gap:48px;white-space:nowrap;font-family:var(--mono);font-size:13.5px;font-weight:500;animation:scroll 30s linear infinite;width:max-content}
+.ticker:hover .ticker-track{animation-play-state:paused}
+.ticker-track span::before{content:"✦ ";color:var(--pink-hot)}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
 /* ─── section scaffolding ─── */
-section{padding:96px 0}
-.sec-kicker{color:var(--blue);font-weight:700;font-size:14px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:14px}
-h2{font-size:clamp(30px,3.8vw,44px);font-weight:800;letter-spacing:-.02em;line-height:1.12;max-width:24ch}
-.sec-intro{color:var(--ink-soft);max-width:60ch;margin-top:16px;font-size:17px}
+section{padding:100px 0}
+.sec-kicker{display:inline-block;font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:var(--lav);border:1.5px solid var(--ink);border-radius:999px;padding:6px 16px;margin-bottom:20px;box-shadow:2px 2px 0 var(--ink)}
+h2{font-family:var(--display);font-size:clamp(26px,3.4vw,38px);font-weight:700;letter-spacing:-.02em;line-height:1.18;max-width:26ch}
+h2 .serif{font-family:var(--serif);font-style:italic;font-weight:400;font-size:1.1em}
+.sec-intro{color:var(--ink-s);max-width:60ch;margin-top:18px;font-size:17px}
 .center{text-align:center}
 .center h2,.center .sec-intro{margin-left:auto;margin-right:auto}
+.center .sec-kicker{margin-left:auto;margin-right:auto}
 
 /* ─── feature cards ─── */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:56px}
-@media(max-width:920px){.cards{grid-template-columns:repeat(2,1fr)}}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:56px}
+@media(max-width:940px){.cards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.cards{grid-template-columns:1fr}}
-.card{border:1px solid var(--line);border-radius:14px;padding:30px 28px;background:#fff;transition:box-shadow .2s,transform .2s}
-.card:hover{box-shadow:0 16px 44px -18px rgba(10,10,10,.18);transform:translateY(-3px)}
-.card .n{font-family:var(--mono);font-size:12px;color:var(--blue);font-weight:600}
-.card h3{font-size:19px;font-weight:800;margin:12px 0 10px;letter-spacing:-.01em}
-.card p{font-size:15px;color:var(--ink-soft)}
-.card .qty{display:inline-block;margin-top:16px;font-size:12.5px;font-weight:700;color:var(--ink);background:var(--mint);border-radius:999px;padding:5px 14px}
+.card{border:1.5px solid var(--ink);border-radius:20px;padding:30px 28px;background:#fff;transition:transform .16s,box-shadow .16s;position:relative}
+.card:hover{transform:translate(-3px,-3px) rotate(-.4deg);box-shadow:6px 6px 0 var(--ink)}
+.card .emoji{width:46px;height:46px;border:1.5px solid var(--ink);border-radius:14px;display:grid;place-items:center;font-size:22px;margin-bottom:18px}
+.card:nth-child(1) .emoji{background:var(--pink)}
+.card:nth-child(2) .emoji{background:var(--sky)}
+.card:nth-child(3) .emoji{background:var(--butter)}
+.card:nth-child(4) .emoji{background:var(--mint)}
+.card:nth-child(5) .emoji{background:var(--lav)}
+.card:nth-child(6) .emoji{background:var(--peach)}
+.card h3{font-family:var(--display);font-size:16.5px;font-weight:600;margin-bottom:10px}
+.card p{font-size:15px;color:var(--ink-s)}
+.card .qty{position:absolute;top:24px;right:24px;font-family:var(--mono);font-size:11.5px;font-weight:600;background:var(--cream);border:1.5px solid var(--ink);border-radius:999px;padding:4px 12px}
 
-/* ─── checklist band ─── */
-.band{background:var(--ink);color:#fff;padding:72px 0}
-.band .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:28px}
-.band h3{font-size:24px;font-weight:800;max-width:22ch;letter-spacing:-.01em}
-.checks{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px 36px;font-size:15px;font-weight:500;color:#d6d6d6}
+/* ─── safety band ─── */
+.band{background:var(--ink);color:var(--cream);padding:80px 0}
+.band .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:32px}
+.band h3{font-family:var(--display);font-size:22px;font-weight:600;max-width:20ch;line-height:1.3}
+.band h3 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--pink)}
+.checks{display:grid;grid-template-columns:repeat(2,minmax(230px,1fr));gap:14px 40px;font-size:15.5px;font-weight:500;color:#E0DEEE}
 @media(max-width:640px){.checks{grid-template-columns:1fr}}
-.checks span::before{content:"✓";color:var(--blue);font-weight:800;margin-right:10px}
+.checks span::before{content:"✓";display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--pink);color:var(--ink);font-size:12px;font-weight:800;margin-right:12px}
 
 /* ─── install steps ─── */
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:56px}
-@media(max-width:860px){.steps{grid-template-columns:1fr}}
-.step{border:1px solid var(--line);border-radius:14px;padding:30px 28px;background:#fff;display:flex;flex-direction:column;gap:12px}
-.step .badge{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;font-size:15px;display:grid;place-items:center}
-.step h3{font-size:18px;font-weight:800}
-.step p{font-size:14.5px;color:var(--ink-soft)}
-.step pre{background:var(--ink);color:#e8e8e8;font-size:12.5px;padding:14px 16px;border-radius:10px;overflow-x:auto;line-height:1.7;margin-top:auto}
-.step pre .c{color:#8a8a8a}
-.step pre .g{color:#63d69c}
-.clients{display:flex;flex-wrap:wrap;gap:10px;margin-top:40px;justify-content:center}
-.chip{font-size:13.5px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:9px 20px;background:#fff}
-.chip b{color:var(--blue)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:56px;counter-reset:step}
+@media(max-width:880px){.steps{grid-template-columns:1fr}}
+.step{border:1.5px solid var(--ink);border-radius:20px;padding:32px 28px 28px;background:#fff;display:flex;flex-direction:column;gap:12px;position:relative;text-align:left;transition:transform .16s,box-shadow .16s}
+.step:hover{transform:translateY(-4px);box-shadow:6px 6px 0 var(--ink)}
+.step .badge{position:absolute;top:-18px;left:24px;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ink);background:var(--pink);font-family:var(--display);font-weight:700;font-size:15px;display:grid;place-items:center;box-shadow:2px 2px 0 var(--ink)}
+.step:nth-child(2) .badge{background:var(--butter)}
+.step:nth-child(3) .badge{background:var(--mint)}
+.step h3{font-family:var(--display);font-size:16px;font-weight:600;margin-top:8px}
+.step p{font-size:15px;color:var(--ink-s)}
+.step pre{background:var(--ink);color:var(--cream);font-size:12.5px;padding:15px 17px;border-radius:14px;overflow-x:auto;line-height:1.7;margin-top:auto}
+.step pre .c{color:#8b8ea8}
+.step pre .g{color:#8be2b3}
+.clients{display:flex;flex-wrap:wrap;gap:11px;margin-top:44px;justify-content:center}
+.chip{font-size:14px;font-weight:600;border:1.5px solid var(--ink);border-radius:999px;padding:9px 20px;background:#fff;transition:transform .13s,background .13s}
+.chip:hover{transform:translateY(-2px) rotate(-1deg);background:var(--sky)}
+.chip b{color:var(--ink)}
+.chip small{color:var(--muted);font-weight:500}
 
-/* ─── skills (mint band, like their pale section) ─── */
-.skills{background:var(--mint)}
-.skill-tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:44px}
-.skill-tags span{font-family:var(--mono);font-size:13px;padding:10px 18px;border-radius:999px;background:#fff;border:1px solid #d3e9e2;color:var(--ink);transition:border-color .15s,color .15s}
-.skill-tags span:hover{border-color:var(--blue);color:var(--blue)}
-.skill-tags .core{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+/* ─── skills ─── */
+.skills{background:var(--paper);border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink)}
+.skill-tags{display:flex;flex-wrap:wrap;gap:12px;margin-top:44px}
+.skill-tags span{font-family:var(--mono);font-size:13px;padding:11px 20px;border-radius:999px;background:#fff;border:1.5px solid var(--ink);transition:transform .14s,background .14s,box-shadow .14s;cursor:default}
+.skill-tags span:hover{transform:translate(-2px,-2px) rotate(-1deg);box-shadow:3px 3px 0 var(--ink)}
+.skill-tags span:nth-child(4n+1):hover{background:var(--pink)}
+.skill-tags span:nth-child(4n+2):hover{background:var(--butter)}
+.skill-tags span:nth-child(4n+3):hover{background:var(--sky)}
+.skill-tags span:nth-child(4n):hover{background:var(--mint)}
+.skill-tags .core{background:var(--ink);color:var(--cream);font-weight:600}
+.skill-tags .core:hover{background:var(--ink);color:var(--pink)}
 
 /* ─── final cta ─── */
-.fin{background:var(--ink);color:#fff;text-align:center;padding:110px 0}
-.fin h2{color:#fff;margin:0 auto}
-.fin .cta-row{justify-content:center;margin-top:40px}
-.fin .cta-note{color:#9a9a9a}
+.fin{text-align:center;position:relative;overflow:hidden;padding:120px 0}
+.fin .blob-pink{top:auto;bottom:-220px;right:14%;opacity:.45}
+.fin .blob-sky{width:320px;height:320px;background:var(--sky);top:-120px;left:8%;position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;animation:drift 14s ease-in-out infinite alternate-reverse}
+.fin h2{margin:0 auto}
+.fin .cta-row{justify-content:center;margin-top:42px}
+.fin .cta-note{margin-top:18px}
 
 /* ─── footer ─── */
-footer{background:var(--ink);color:#9a9a9a;border-top:1px solid var(--dark-line);padding:36px 0;font-size:13.5px}
+footer{background:var(--ink);color:#8b8ea8;padding:38px 0;font-size:14px}
 footer .wrap{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-between}
-footer a{color:#d6d6d6;text-decoration:none}
-footer a:hover{color:var(--blue)}
+footer a{color:#E0DEEE;text-decoration:none}
+footer a:hover{color:var(--pink)}
 
 /* ─── motion (scoped to .js so the page is complete without JavaScript) ─── */
-.js .rise{opacity:0;transform:translateY(20px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.js .rise{opacity:0;transform:translateY(24px);transition:opacity .75s cubic-bezier(.2,.7,.2,1),transform .75s cubic-bezier(.2,.7,.2,1)}
 .js .rise.in{opacity:1;transform:none}
 .hero .rise:nth-child(1){transition-delay:.05s}
-.hero .rise:nth-child(2){transition-delay:.13s}
-.hero .rise:nth-child(3){transition-delay:.21s}
-.hero .rise:nth-child(4){transition-delay:.29s}
-.hero .rise:nth-child(5){transition-delay:.37s}
-.hero .rise:nth-child(6){transition-delay:.45s}
-@media(prefers-reduced-motion:reduce){.rise{opacity:1;transform:none;transition:none}}
+.hero .rise:nth-child(2){transition-delay:.14s}
+.hero .rise:nth-child(3){transition-delay:.23s}
+.hero .rise:nth-child(4){transition-delay:.32s}
+.hero .rise:nth-child(5){transition-delay:.41s}
+.hero .rise:nth-child(6){transition-delay:.5s}
+@media(prefers-reduced-motion:reduce){
+  .js .rise{opacity:1;transform:none;transition:none}
+  .blob,.demo,.ticker-track,.kicker .dot{animation:none}
+}
 </style>
 </head>
 <body>
 
 <header>
   <div class="wrap bar">
-    <a class="brand" href="#"><span class="mark">W</span>shopwired<small>/ mcp server</small></a>
+    <a class="brand" href="#">shopwired-mcp<small>open source</small></a>
     <nav>
       <a href="#tools">Tools</a>
       <a href="#install">Install</a>
@@ -175,22 +216,25 @@ footer a:hover{color:var(--blue)}
 </header>
 
 <div class="hero">
+  <div class="blob blob-pink"></div>
+  <div class="blob blob-lav"></div>
+  <div class="blob blob-butter"></div>
   <div class="wrap">
     <div>
-      <p class="kicker rise"><span class="dot"></span>Open source · MIT · v0.2.0</p>
-      <h1 class="rise">Connect your webshop to Claude — easily, safely, and <span>on your terms.</span></h1>
+      <p class="kicker rise"><span class="dot"></span>OPEN SOURCE · MIT · v0.2.0</p>
+      <h1 class="rise">Your webshop, <span class="serif">on speaking terms</span> with <span class="hl">Claude.</span></h1>
       <p class="lede rise">An MCP server that gives AI assistants <strong>38 tools</strong> for your
-        ShopWired store — products, orders, customers and store configuration — wrapped in
-        rate limits, confirmation guards and a circuit breaker.</p>
+        ShopWired store — products, orders, customers and configuration — wrapped in rate limits,
+        confirmation guards and a circuit breaker.</p>
       <div class="cta-row rise">
-        <a class="btn btn-blue" href="https://github.com/mcmespinaa/shopwired-mcp-server/archive/refs/heads/main.zip">Download zip</a>
-        <a class="btn btn-outline" href="https://github.com/mcmespinaa/shopwired-mcp-server">View on GitHub ↗</a>
+        <a class="btn btn-pink" href="https://github.com/mcmespinaa/shopwired-mcp-server/archive/refs/heads/main.zip">⬇ Download zip</a>
+        <a class="btn btn-plain" href="https://github.com/mcmespinaa/shopwired-mcp-server">View on GitHub ↗</a>
       </div>
       <p class="cta-note rise">unzip → <code>bash install.sh</code> → done · versioned bundles on the <a href="https://github.com/mcmespinaa/shopwired-mcp-server/releases">releases page</a></p>
       <div class="trust rise">
-        <span><b class="ok">✓</b> No plugins needed</span>
-        <span><b class="ok">✓</b> Keys stay on your machine</span>
-        <span><b class="ok">✓</b> 35 tests</span>
+        <span>No plugins needed</span>
+        <span>Keys stay on your machine</span>
+        <span>35 tests</span>
       </div>
     </div>
     <div class="demo rise">
@@ -207,48 +251,59 @@ footer a:hover{color:var(--blue)}
   </div>
 </div>
 
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    <span>"Show me my top-selling products"</span>
+    <span>"How many orders came in this week?"</span>
+    <span>"Create a 10% discount code called SAVE10"</span>
+    <span>"Update stock for product 1234 to 50 units"</span>
+    <span>"What shipping zones do I have configured?"</span>
+    <span>"List customers and their order counts"</span>
+    <span>"Show me my top-selling products"</span>
+    <span>"How many orders came in this week?"</span>
+    <span>"Create a 10% discount code called SAVE10"</span>
+    <span>"Update stock for product 1234 to 50 units"</span>
+    <span>"What shipping zones do I have configured?"</span>
+    <span>"List customers and their order counts"</span>
+  </div>
+</div>
+
 <section id="tools">
   <div class="wrap">
-    <p class="sec-kicker rise">One powerful integration</p>
-    <h2 class="rise">Everything you need — from checkout to catalog, all the essentials are built in.</h2>
+    <span class="sec-kicker rise">One powerful integration</span>
+    <h2 class="rise">Everything on the shelf, <span class="serif">nothing off the books.</span></h2>
     <p class="sec-intro rise">Every tool declares MCP annotations (read-only, destructive, idempotent) so your
       AI client knows what's safe to auto-approve — and every delete demands explicit confirmation.</p>
     <div class="cards">
       <div class="card rise">
-        <span class="n">01</span>
+        <span class="emoji">🛍️</span><span class="qty">11 tools</span>
         <h3>Products</h3>
         <p>Search, list, create and update — stock levels, variations, images. Pence-to-pounds handled correctly.</p>
-        <span class="qty">11 tools</span>
       </div>
       <div class="card rise">
-        <span class="n">02</span>
+        <span class="emoji">📦</span><span class="qty">7 tools</span>
         <h3>Orders</h3>
         <p>List, search, update status with optional customer notification, add internal comments.</p>
-        <span class="qty">7 tools</span>
       </div>
       <div class="card rise">
-        <span class="n">03</span>
+        <span class="emoji">💛</span><span class="qty">4 tools</span>
         <h3>Customers</h3>
         <p>Look up, count and create customer records — with email validation built in.</p>
-        <span class="qty">4 tools</span>
       </div>
       <div class="card rise">
-        <span class="n">04</span>
+        <span class="emoji">🗂️</span><span class="qty">16 tools</span>
         <h3>Store configuration</h3>
         <p>Categories, brands, vouchers, gift cards, shipping zones, webhooks (HTTPS-only), payment methods.</p>
-        <span class="qty">16 tools</span>
       </div>
       <div class="card rise">
-        <span class="n">05</span>
+        <span class="emoji">🛡️</span><span class="qty">built in</span>
         <h3>Reliability layer</h3>
         <p>Leaky-bucket rate limiter matched to ShopWired's API limits, circuit breaker, response cache, retry with backoff.</p>
-        <span class="qty">built in</span>
       </div>
       <div class="card rise">
-        <span class="n">06</span>
+        <span class="emoji">☁️</span><span class="qty">optional</span>
         <h3>Remote mode</h3>
-        <p>Deploy as a hosted MCP server: bearer-token auth (constant-time, fail-closed), /health probes, Dockerfile for Cloud Run, Render or any VPS.</p>
-        <span class="qty">optional</span>
+        <p>Deploy as a hosted MCP server: bearer-token auth, /health probes, Dockerfile for Cloud Run, Render or any VPS.</p>
       </div>
     </div>
   </div>
@@ -256,7 +311,7 @@ footer a:hover{color:var(--blue)}
 
 <div class="band">
   <div class="wrap">
-    <h3 class="rise">Built-in safety, like:</h3>
+    <h3 class="rise">Built-in safety, <em>by default</em></h3>
     <div class="checks rise">
       <span>Deletes require confirm=True</span>
       <span>Read-only tools auto-approvable</span>
@@ -270,8 +325,8 @@ footer a:hover{color:var(--blue)}
 
 <section id="install">
   <div class="wrap center">
-    <p class="sec-kicker rise">Get started</p>
-    <h2 class="rise">Two minutes from zip to first prompt.</h2>
+    <span class="sec-kicker rise">Get started</span>
+    <h2 class="rise">Two minutes from zip <span class="serif">to first prompt.</span></h2>
     <div class="steps">
       <div class="step rise">
         <span class="badge">1</span>
@@ -296,20 +351,20 @@ bash install.sh  <span class="c"># Windows: install.bat</span></pre>
       </div>
     </div>
     <div class="clients rise">
-      <span class="chip">works with <b>Claude Code</b></span>
+      <span class="chip"><small>works with</small> <b>Claude Code</b></span>
       <span class="chip"><b>Claude Desktop</b></span>
       <span class="chip"><b>Claude Cowork</b></span>
       <span class="chip"><b>Cursor</b></span>
       <span class="chip"><b>Windsurf</b></span>
-      <span class="chip">any MCP client</span>
+      <span class="chip"><b>any MCP client</b></span>
     </div>
   </div>
 </section>
 
 <section class="skills" id="skills">
   <div class="wrap">
-    <p class="sec-kicker rise">Included free</p>
-    <h2 class="rise">Ten skills that teach the judgment — not just the tools.</h2>
+    <span class="sec-kicker rise">Included free</span>
+    <h2 class="rise">Ten skills that teach <span class="serif">the judgment</span> — not just the tools.</h2>
     <p class="sec-intro rise">The server gives your assistant hands; the bundled skills library gives it retail
       sense — how variation stock really works, when a price change needs a promotion guard, what to
       check before touching a live store.</p>
@@ -329,11 +384,14 @@ bash install.sh  <span class="c"># Windows: install.bat</span></pre>
 </section>
 
 <section class="fin">
+  <div class="blob blob-pink"></div>
+  <div class="blob-sky"></div>
   <div class="wrap">
-    <h2 class="rise">Ready to put your store on speaking terms with your AI?</h2>
+    <span class="sec-kicker rise">Ring it up</span>
+    <h2 class="rise">Ready to put your store on <span class="serif">speaking terms</span> with your AI?</h2>
     <div class="cta-row rise">
-      <a class="btn btn-white" href="https://github.com/mcmespinaa/shopwired-mcp-server/archive/refs/heads/main.zip">Download zip</a>
-      <a class="btn btn-outline" href="https://github.com/mcmespinaa/shopwired-mcp-server">Star on GitHub ↗</a>
+      <a class="btn btn-pink" href="https://github.com/mcmespinaa/shopwired-mcp-server/archive/refs/heads/main.zip">⬇ Download zip</a>
+      <a class="btn btn-plain" href="https://github.com/mcmespinaa/shopwired-mcp-server">Star on GitHub ↗</a>
     </div>
     <p class="cta-note rise">MIT licensed · no telemetry · your API keys never leave your machine</p>
   </div>
@@ -343,7 +401,7 @@ bash install.sh  <span class="c"># Windows: install.bat</span></pre>
   <div class="wrap">
     <span>© 2026 · <a href="https://github.com/mcmespinaa">mcmespinaa</a> · MIT</span>
     <span><a href="https://github.com/mcmespinaa/shopwired-mcp-server/blob/main/shopwired-mcp-server/DEPLOY.md">Deploy guide</a> · <a href="https://github.com/mcmespinaa/shopwired-mcp-server/blob/main/shopwired-mcp-server/CHANGELOG.md">Changelog</a> · <a href="https://github.com/mcmespinaa/shopwired-mcp-server/issues">Issues</a></span>
-    <span>Not affiliated with ShopWired Ltd.</span>
+    <span>Independent open-source project — not affiliated with ShopWired Ltd.</span>
   </div>
 </footer>
 
