@@ -40,6 +40,7 @@ Package manager: `uv` (preferred) or `pip`.
 - `tests/` — pytest tests (auth middleware, health endpoint, client parsing, utils)
 - `DEPLOY.md` — Remote deployment (Cloud Run / Render / VPS) + health checks
 - `Dockerfile` / `install.sh` / `install.bat` — Container image and one-click local installers
+- `make-bundle.sh` — Builds the distributable zip (`dist/shopwired-mcp-bundle-<version>.zip`); installs `BUNDLE_README.md` as the bundle's README
 - `PERMISSIONS.md` — API endpoint permission mappings
 - `CONTRIBUTING.md` — Contribution guidelines
 - `CHANGELOG.md` — Version history
